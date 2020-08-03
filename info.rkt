@@ -5,8 +5,6 @@
 (define collection "write-thru-hash")
 (define deps '("base"
                "db"
-               "sql"
-               "racket/fasl"
-               "racket/hash"))
+               "sql"))
 (define pkg-desc "Hash impersonators backed by persistent storage.")
 (define pkg-authors '(anentropic))
