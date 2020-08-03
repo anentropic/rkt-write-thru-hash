@@ -2,4 +2,4 @@
 
 (require "db-hash.rkt")
 
-(provide make-db-hash)
+(provide (all-from-out "db-hash.rkt"))
