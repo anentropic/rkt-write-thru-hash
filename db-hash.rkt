@@ -1,9 +1,22 @@
 #lang racket/base
 
-(require db racket/fasl racket/hash sql)
+(require db
+         racket/bool
+         racket/contract
+         racket/fasl
+         racket/hash
+         sql)
 
-(provide make-db-hash)
+(provide
+  (contract-out
+    [make-db-hash (->* (connection?)
+                       (#:table-name string?
+                        #:src-hash (or/c false? hash?)
+                        #:serializer (-> any/c bytes?)
+                        #:deserializer (-> bytes? any/c))
+                       (and/c hash? (not/c immutable?)))]))
 
+;; Private helpers
 
 (define (hash-from-db db-conn table-name deserializer)
   (make-hash
@@ -39,6 +52,7 @@
       (query-exec db-conn
         (format "DELETE FROM ~a" table-name)))))
 
+;; Public
 
 (define (make-db-hash db-conn #:table-name   [table-name "hashtable"]
                               #:src-hash     [src-hash #f]
@@ -59,10 +73,11 @@
       "CREATE TABLE IF NOT EXISTS ~a (key text NOT NULL, value text NOT NULL, PRIMARY KEY (key))"
       table-name))
 
-  (define storage-hash (make-impersonator db-conn
-                                          table-name
-                                          serializer
-                                          (hash-from-db db-conn table-name deserializer)))
+  (define storage-hash
+    (make-impersonator db-conn
+                       table-name
+                       serializer
+                       (hash-from-db db-conn table-name deserializer)))
 
   (when src-hash
     (hash-clear! storage-hash)

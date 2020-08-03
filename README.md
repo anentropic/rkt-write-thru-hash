@@ -1,5 +1,5 @@
 # write-thru-hash
-Racket (mutable) hash-table impersonators, backed by persistent storage.
+Racket (mutable) [hash-table impersonators](https://docs.racket-lang.org/reference/chaperones.html#%28def._%28%28quote._~23~25kernel%29._impersonate-hash%29%29), backed by persistent storage.
 
 The hash-table will then behave like a write-thru cache, any updates to the hash are persisted to the db and any lookups come directly from the hash-table itself.
 
