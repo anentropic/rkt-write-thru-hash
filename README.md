@@ -41,7 +41,7 @@ Its signature looks like:
     ...)
 ```
 
-The one required arg is a database conenction from the Racket `db` lib.
+The one required arg is a database connection from the Racket `db` lib.
 
 The first time you connect to a db, the storage table `<table-name>` will be created.
 
