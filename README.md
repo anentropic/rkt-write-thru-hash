@@ -1,2 +1,2 @@
-# rkt-write-thru-hash
-Hash impersonators backed by persistent storage.
+# write-thru-hash
+Racket hash-table impersonators backed by persistent storage.
