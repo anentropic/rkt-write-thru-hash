@@ -20,6 +20,8 @@ services:
 
   tests:
     build: ./
+    depends_on:
+      - postgres
     entrypoint: ["raco", "test", "--table", "write-thru-hash/tests.rkt"]
     environment:
         << : *sqlite
