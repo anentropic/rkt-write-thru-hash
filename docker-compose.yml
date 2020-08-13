@@ -22,8 +22,9 @@ services:
     build: ./
     depends_on:
       - postgres
-    entrypoint: ["raco", "test", "--table", "write-thru-hash/tests.rkt"]
+    command: sh -c "/wait && raco test --table write-thru-hash/tests.rkt"
     environment:
         << : *sqlite
         << : *postgres
         POSTGRES_HOST: postgres
+        WAIT_HOSTS: postgres:5432
