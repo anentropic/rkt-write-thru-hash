@@ -3,6 +3,11 @@ Racket (mutable) [hash-table impersonators](https://docs.racket-lang.org/referen
 
 The hash-table will then behave like a write-thru cache, any updates to the hash are persisted to the db and any lookups come directly from the hash-table itself.
 
+* [Installation](#installation)
+* [Requirements](#requirements)
+* [Usage](#usage)
+* [Motivating example](#motivating-example)
+
 ### Installation
 
 To install:
@@ -28,20 +33,29 @@ This means the following dbs are supported:
 
 MySQL would be possible but it uses a different upsert syntax, so is not supported for now.
 
+All are using [Racket db](https://docs.racket-lang.org/db/).
+
 ### Usage
 
 Currently this lib provides one function: `make-db-hash`.
 
 Its signature looks like:
 ```racket
-(define (make-db-hash db-conn #:table-name   [table-name "hashtable"]
+(define (make-db-hash db-conn #:table-name   [table-name DEFAULT-TABLE-NAME]
                               #:src-hash     [src-hash #f]
-                              #:serializer   [serializer s-exp->fasl]
-                              #:deserializer [deserializer fasl->s-exp])
+                              #:serializer   [serializer DEFAULT-SERIALIZER]
+                              #:deserializer [deserializer DEFAULT-DESERIALIZER])
     ...)
+
+[make-db-hash (->* (connection?)
+                   (#:table-name string?
+                    #:src-hash (or/c false? serializable-hash/c)
+                    #:serializer (-> serializable? string?)
+                    #:deserializer (-> string? serializable?))
+                   (and/c serializable-hash/c (not/c immutable?)))]
 ```
 
-The one required arg is a database connection from the Racket `db` lib.
+The one required arg, `db-conn`, is a database connection from the Racket `db` lib.
 
 The first time you connect to a db, the storage table `<table-name>` will be created.
 
@@ -87,3 +101,61 @@ I have no immediate plans to fix this, it's recommended just to have a 1-1 relat
 
 NOTE: The resulting hash is an `any/any` hash. If you initialised it with a `src-hash` built using `make-custom-hash` and having a specific type contract then this contract won't be preserved.
 
+### Motivating example
+
+I was looking into the [Racket datalog](https://docs.racket-lang.org/datalog/) library. It has some basic support for dumping and loading the 'theory' (datalog db) from a file. For various pointless reasons I was daydreaming about a scenario where I would want "incremental persistence" for the datalog theory data, i.e. as you assert and retract facts during operation each change would be persisted. I also imagined it may get slow to dump the whole structure each time (in this daydream, where I had a large db and frequent updates...).
+
+Peeking under the covers I found that the datalog 'theory' is just a mutable hash-table.  So what I needed, in the daydream, was an object that could pass as a mutable hash-table but would behave as a write-through cache to some storage. Hence this `write-thru-hash`.
+
+And it works, here is the typical family tree example, but with incremental perisstence:
+
+```racket
+(require datalog db write-thru-hash)
+
+(define db-conn
+    (sqlite3-connect #:database "./datalog.sqlite"
+                     #:mode 'create))
+
+(define family (make-db-hash db-conn))
+
+(datalog family
+    (! (male abe))
+    (! (male homer))
+    (! (male bart))
+    (! (female marge))
+    (! (female lisa))
+    (! (female maggie))
+    (! (parent abe homer))
+    (! (parent homer bart))
+    (! (parent homer maggie))
+    (! (parent homer lisa))
+    (! (parent marge bart))
+    (! (parent marge lisa))
+    (! (parent marge maggie))
+    (! (:- (father X Y) (parent X Y) (male X)))
+    (! (:- (mother X Y) (parent X Y) (female X)))
+    (! (:- (grandparent X Z) (parent Y Z) (parent X Y)))
+    (! (:- (grandfather X Y) (grandparent X Y) (male X)))
+    (! (:- (grandmother X Y) (grandparent X Y) (female X)))
+    (! (:- (child X Y) (parent Y X)))
+    (! (:- (son X Y) (child X Y) (male X)))
+    (! (:- (daughter X Y) (child X Y) (female X)))
+    (! (:- (sibling X Y) (parent Z X) (parent Z Y) (!= X Y)))
+    (! (:- (brother X Y) (sibling X Y) (male X)))
+    (! (:- (sister X Y) (sibling X Y) (female X)))
+)
+
+; reload from db into a new identifier...
+(define reloaded (make-db-hash db-conn))
+
+; we have a usable datalog theory with the persisted data...
+(check-equal?
+    (datalog reloaded (? (sister X bart)))
+    '(#hasheq((X . lisa)) #hasheq((X . maggie))))
+(check-equal?
+    (datalog reloaded (? (father X lisa)))
+    '(#hasheq((X . homer))))
+(check-equal?
+    (datalog reloaded (? (grandfather X maggie)))
+    '(#hasheq((X . abe))))
+```

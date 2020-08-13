@@ -2,6 +2,7 @@
 
 (require
   db
+  datalog
   disposable
   fixture
   fixture/rackunit
@@ -20,6 +21,16 @@
 
 ;; Fixtures
 
+(define (drop-tables db-conn)
+  (map
+    (lambda (table-name)
+      (set! table-name
+        (parameterize ((current-sql-dialect (dbsystem-name (connection-dbsystem db-conn))))
+          (sql-ast->string (ident-qq (Ident:AST ,(make-ident-ast table-name))))))
+      (query-exec db-conn
+        (format "DROP TABLE IF EXISTS ~a" table-name)))
+    (list-tables db-conn)))
+
 (define-fixture sqlite-connection
   (disposable
     (lambda ()
@@ -30,16 +41,6 @@
       (when
         (file-exists? SQLITE-DB-PATH)
         (delete-file SQLITE-DB-PATH)))))
-
-(define (drop-tables db-conn)
-  (map
-    (lambda (table-name)
-      (set! table-name
-        (parameterize ((current-sql-dialect (dbsystem-name (connection-dbsystem db-conn))))
-          (sql-ast->string (ident-qq (Ident:AST ,(make-ident-ast table-name))))))
-      (query-exec db-conn
-        (format "DROP TABLE IF EXISTS ~a" table-name)))
-    (list-tables db-conn)))
 
 (define-fixture postgres-connection
   (disposable
@@ -132,7 +133,50 @@
         (check-equal? myhash2 expected)
         ; init db with a new src-hash (replacing existing data)...
         (define myhash3 (make-db-hash db-conn #:src-hash (hash 'jkl 101)))
-        (check-equal? myhash3 (make-hash (list (cons 'jkl 101))))))))
+        (check-equal? myhash3 (make-hash (list (cons 'jkl 101)))))
+      (test-case/fixture "datalog compatibility"
+        #:fixture db-conn-fixture
+        (define db-conn (fixture-value db-conn-fixture))
+        (define family (make-db-hash db-conn))
+        (check-equal? family (make-hash))
+        (datalog family
+          (! (male abe))
+          (! (male homer))
+          (! (male bart))
+          (! (female marge))
+          (! (female lisa))
+          (! (female maggie))
+          (! (parent abe homer))
+          (! (parent homer bart))
+          (! (parent homer maggie))
+          (! (parent homer lisa))
+          (! (parent marge bart))
+          (! (parent marge lisa))
+          (! (parent marge maggie))
+          (! (:- (father X Y) (parent X Y) (male X)))
+          (! (:- (mother X Y) (parent X Y) (female X)))
+          (! (:- (grandparent X Z) (parent Y Z) (parent X Y)))
+          (! (:- (grandfather X Y) (grandparent X Y) (male X)))
+          (! (:- (grandmother X Y) (grandparent X Y) (female X)))
+          (! (:- (child X Y) (parent Y X)))
+          (! (:- (son X Y) (child X Y) (male X)))
+          (! (:- (daughter X Y) (child X Y) (female X)))
+          (! (:- (sibling X Y) (parent Z X) (parent Z Y) (!= X Y)))
+          (! (:- (brother X Y) (sibling X Y) (male X)))
+          (! (:- (sister X Y) (sibling X Y) (female X)))
+        )
+        ; reload from db into a new identifier...
+        (define reloaded (make-db-hash db-conn))
+        (check-equal?
+          (datalog reloaded (? (sister X bart)))
+          '(#hasheq((X . lisa)) #hasheq((X . maggie))))
+        (check-equal?
+          (datalog reloaded (? (father X lisa)))
+          '(#hasheq((X . homer))))
+        (check-equal?
+          (datalog reloaded (? (grandfather X maggie)))
+          '(#hasheq((X . abe))))
+      ))))
 
 ;; Runner
 
