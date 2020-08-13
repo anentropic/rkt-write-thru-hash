@@ -18,8 +18,8 @@
     [make-db-hash (->* (connection?)
                        (#:table-name string?
                         #:src-hash (or/c false? serializable-hash/c)
-                        #:serializer (-> serializable? bytes?)
-                        #:deserializer (-> bytes? serializable?))
+                        #:serializer (-> serializable? string?)
+                        #:deserializer (-> string? serializable?))
                        (and/c serializable-hash/c (not/c immutable?)))])
   DEFAULT-TABLE-NAME
   DEFAULT-SERIALIZER
