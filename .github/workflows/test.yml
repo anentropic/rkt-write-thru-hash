@@ -1,0 +1,8 @@
+name: docker-compose-test-on-push
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Tests
+        run: ./docker_tests.sh
