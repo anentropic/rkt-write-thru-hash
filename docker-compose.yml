@@ -1,0 +1,27 @@
+version: "3.8"
+
+x-postgres:
+    &postgres
+    POSTGRES_PASSWORD: testadmin123
+    POSTGRES_USER: testuser
+    POSTGRES_DB: testdb
+
+x-sqlite:
+    &sqlite
+    SQLITE_DB_PATH: "./db.sqlite"
+
+services:
+  postgres:
+    image: postgres:9.6  # oldest version supporting upsert (9.4)
+    expose:
+      - "5432"
+    environment:
+        << : *postgres
+
+  tests:
+    build: ./
+    entrypoint: ["raco", "test", "--table", "write-thru-hash/tests.rkt"]
+    environment:
+        << : *sqlite
+        << : *postgres
+        POSTGRES_HOST: postgres

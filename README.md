@@ -22,7 +22,7 @@ raco pkg install https://github.com/anentropic/rkt-write-thru-hash.git
 `make-db-hash` uses the `INSERT ... ON CONFLICT UPDATE` SQL statement to do an 'upsert' operation.
 
 This means the following dbs are supported:
-* SQLite > 3.24 (...a lot of systems have an older version pre-installed)
+* SQLite > [3.24](https://phoronix.com/scan.php?page=news_item&px=SQLite-3.24-Released-UPSERT) (...a lot of systems have an older version pre-installed)
 * Postgres > 9.5
 * any other db which supports this upsert syntax, via an ODBC connection
 
@@ -85,4 +85,5 @@ NOTE: Currently this is a one-way sync (hash->db) only. This means that if you i
 
 I have no immediate plans to fix this, it's recommended just to have a 1-1 relation between hash-table and db+table.
 
+NOTE: The resulting hash is an `any/any` hash. If you initialised it with a `src-hash` built using `make-custom-hash` and having a specific type contract then this contract won't be preserved.
 
