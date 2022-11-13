@@ -107,7 +107,7 @@ I was looking into the [Racket datalog](https://docs.racket-lang.org/datalog/) l
 
 Peeking under the covers I found that the datalog 'theory' is just a mutable hash-table.  So what I needed, in the daydream, was an object that could pass as a mutable hash-table but would behave as a write-through cache to some storage. Hence this `write-thru-hash`.
 
-And it works, here is the typical family tree example, but with incremental perisstence:
+And it works, here is the typical family tree example, but with incremental persistence:
 
 ```racket
 (require datalog db write-thru-hash)
@@ -142,8 +142,7 @@ And it works, here is the typical family tree example, but with incremental peri
     (! (:- (daughter X Y) (child X Y) (female X)))
     (! (:- (sibling X Y) (parent Z X) (parent Z Y) (!= X Y)))
     (! (:- (brother X Y) (sibling X Y) (male X)))
-    (! (:- (sister X Y) (sibling X Y) (female X)))
-)
+    (! (:- (sister X Y) (sibling X Y) (female X))))
 
 ; reload from db into a new identifier...
 (define reloaded (make-db-hash db-conn))
